@@ -27,7 +27,7 @@
         <activity
             android:name=".ui.main.MainActivity"
             android:exported="true" />
-
+        <receiver android:name=".ui.edit.AlarmReceiver"/>
         <meta-data
             android:name="preloaded_fonts"
             android:resource="@array/preloaded_fonts" />

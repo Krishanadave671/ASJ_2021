@@ -1,6 +1,6 @@
 package com.gdsctsec.smartt.ui.edit
 
-import android.app.TimePickerDialog
+import android.app.*
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 
 import java.util.*
 import android.graphics.Color
+import android.os.Build
 
 import android.text.TextWatcher
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
@@ -21,6 +22,8 @@ import com.gdsctsec.smartt.data.repository.LectureRepository
 import com.gdsctsec.smartt.ui.main.HomeScreenFragment
 import com.gdsctsec.smartt.viewmodel.EditScreenViewModel
 import com.gdsctsec.smartt.viewmodel.EditscreenViewmodelfactory
+import com.google.android.material.timepicker.MaterialTimePicker
+import com.google.android.material.timepicker.TimeFormat
 
 
 class EditScreenActivity : AppCompatActivity() {
@@ -30,19 +33,23 @@ class EditScreenActivity : AppCompatActivity() {
     private lateinit var dayTextInputEditText: AutoCompleteTextView
     private lateinit var saveTextview: TextView
     private lateinit var cancelTextView: TextView
-
+    private lateinit var calendar: Calendar
+    private lateinit var alarmManager: AlarmManager
+    private lateinit var pendingIntent: PendingIntent
+    private lateinit var picker : MaterialTimePicker
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_editscreen)
-
+        createNotificationChannel()
         lectureEditText = findViewById(R.id.add_lecture_edit_text)
         starttimeTextView = findViewById(R.id.textview_starttime)
         endtimeTextView = findViewById(R.id.textview_endtime)
         dayTextInputEditText = findViewById(R.id.textfield_day)
         saveTextview = findViewById(R.id.textView_save)
         cancelTextView = findViewById(R.id.textView_cancel)
+
         val viewModelFactory = EditscreenViewmodelfactory(this)
         var id : Int  = -1
         val viewModel = ViewModelProvider(this,viewModelFactory).get(EditScreenViewModel::class.java)
@@ -88,7 +95,9 @@ class EditScreenActivity : AppCompatActivity() {
 
 
         starttimeTextView.setOnClickListener {
-            viewModel.timePick(starttimeTextView)
+            showTimePicker(starttimeTextView)
+
+
         }
         endtimeTextView.setOnClickListener {
             viewModel.timePick(endtimeTextView)
@@ -111,6 +120,8 @@ class EditScreenActivity : AppCompatActivity() {
 //
             dayTextInputEditText.height = WRAP_CONTENT
             viewEnabled(dayTextInputEditText)
+
+            setAlarm()
            finish()
         }
 
@@ -118,10 +129,102 @@ class EditScreenActivity : AppCompatActivity() {
         cancelTextView.setOnClickListener {
             dayTextInputEditText.height = WRAP_CONTENT
             viewEnabled(dayTextInputEditText)
-
             finish()
         }
     }
+
+    private fun cancelAlarm() {
+
+
+        alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
+        val intent = Intent(this,AlarmReceiver::class.java)
+
+        pendingIntent = PendingIntent.getBroadcast(this,0,intent,0)
+
+        alarmManager.cancel(pendingIntent)
+        Toast.makeText(this,"Alarm Cancelled",Toast.LENGTH_LONG).show()
+
+
+
+    }
+
+    private fun setAlarm() {
+
+
+        alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
+        val intent = Intent(this,AlarmReceiver::class.java)
+
+        pendingIntent = PendingIntent.getBroadcast(this,0,intent,0)
+
+        alarmManager.setRepeating(
+
+            AlarmManager.RTC_WAKEUP,calendar.timeInMillis,
+            AlarmManager.INTERVAL_DAY,pendingIntent
+
+        )
+
+        Toast.makeText(this,"Alarm set Successfuly",Toast.LENGTH_SHORT).show()
+
+    }
+    private fun createNotificationChannel() {
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+
+            val name : CharSequence = "foxandroidReminderChannel"
+            val description = "Channel For Alarm Manager"
+            val importance = NotificationManager.IMPORTANCE_HIGH
+            val channel = NotificationChannel("foxandroid",name,importance)
+            channel.description = description
+            val notificationManager = getSystemService(
+                NotificationManager::class.java
+            )
+
+            notificationManager.createNotificationChannel(channel)
+        }
+
+    }
+    private fun showTimePicker(v : TextView) {
+
+        picker = MaterialTimePicker.Builder()
+            .setTimeFormat(TimeFormat.CLOCK_12H)
+            .setHour(12)
+            .setMinute(0)
+            .setTitleText("Select Alarm Time")
+            .build()
+
+        picker.show(supportFragmentManager,"foxandroid")
+
+        picker.addOnPositiveButtonClickListener {
+
+            if (picker.hour > 12){
+
+                v.text =
+                    String.format("%02d",picker.hour - 12) + " : " + String.format(
+                        "%02d",
+                        picker.minute
+                    ) + "PM"
+
+
+            }else{
+
+                String.format("%02d",picker.hour) + " : " + String.format(
+                    "%02d",
+                    picker.minute
+                ) + "AM"
+
+            }
+
+            calendar = Calendar.getInstance()
+            calendar[Calendar.HOUR_OF_DAY] = picker.hour
+            calendar[Calendar.MINUTE] = picker.minute
+            calendar[Calendar.SECOND] = 0
+            calendar[Calendar.MILLISECOND] = 0
+
+
+        }
+
+    }
+
     private fun  btnDisabled(v : TextView){
         v.isEnabled = false
         v.setTextColor(Color.parseColor("#5D1BAACA"))
@@ -135,7 +238,7 @@ class EditScreenActivity : AppCompatActivity() {
         v.isEnabled = true
         v.isPressed = true
         v. isFocusable = true
-        v.isFocusableInTouchMode = true;
+        v.isFocusableInTouchMode = true
         v.inputType = EditorInfo.TYPE_CLASS_TEXT
 
 
